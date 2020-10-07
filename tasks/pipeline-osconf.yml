@@ -44,8 +44,8 @@
   file:
     dest: "{{ archivematica_src_shareddir }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
+    group: "{{ archivematica_src_am_system_group }}"
   when: "create_shareddir"
 
 # (this is required because some hardcoding of the shared dir remains in archivematica code)
@@ -77,8 +77,8 @@
   file:
     dest: "{{ item }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
+    group: "{{ archivematica_src_am_system_group }}"
     mode: "g+s"
   with_items:
     - "{{ archivematica_src_dashboard_logdir }}"
@@ -90,7 +90,7 @@
   file:
     dest: "{{ item }}"
     state: "directory"
-    owner: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
     group: "syslog"
     mode: "g+w"
   with_items:
@@ -100,8 +100,8 @@
 - name: "Touch log files"
   file:
     path: "{{ item }}"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
+    group: "{{ archivematica_src_am_system_group }}"
     state: "touch"
   with_items:
     - "{{ archivematica_src_dashboard_logdir }}/dashboard.log"

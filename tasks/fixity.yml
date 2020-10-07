@@ -41,8 +41,8 @@
   file:
      path: "{{ archivematica_src_fixity_virtualenv }}"
      state: "directory"
-     owner: "archivematica"
-     group: "archivematica"
+     owner: "{{ archivematica_src_ss_system_user }}"
+     group: "{{ archivematica_src_ss_system_group }}"
      recurse: "yes"
 
 - name: "Create config file"
@@ -50,17 +50,16 @@
      src: "etc/sysconfig/fixity.j2"
      dest: "{{ systemd_environment_path }}/fixity"
      mode: 0640
-     owner: "archivematica"
-     group: "archivematica"
+     owner: "{{ archivematica_src_ss_system_user }}"
+     group: "{{ archivematica_src_ss_system_group }}"
 
 - name: "Create log dir"
   file:
      path: "/var/log/archivematica/fixity/"
      state: "directory"
      mode: 0750
-     owner: "archivematica"
-     group: "archivematica"
-
+     owner: "{{ archivematica_src_ss_system_user }}"
+     group: "{{ archivematica_src_ss_system_group }}"
 
 - name: "Create fixity script"
   template:
@@ -80,7 +79,7 @@
      hour: "3"
      day: "1"
      month: "*/3"
-     user: "archivematica"
+     user: "{{ archivematica_src_ss_system_user }}"
      cron_file: "fixity"
      state: "present"
 
@@ -90,5 +89,5 @@
      env: yes
      value: "/bin/bash"
      cron_file: "fixity"
-     user: "archivematica"
+     user: "{{ archivematica_src_ss_system_user }}"
      state: "present"

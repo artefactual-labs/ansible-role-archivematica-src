@@ -16,6 +16,11 @@ archivematica_src_install_acceptance_tests: "no"
 archivematica_src_install_fixity: "no"
 archivematica_src_search_enabled: "yes"
 
+# System Users
+archivematica_src_am_system_user: "archivematica"
+archivematica_src_am_system_group: "archivematica"
+archivematica_src_ss_system_user: "archivematica"
+archivematica_src_ss_system_group: "archivematica"
 #Components to configure
 archivematica_src_configure_dashboard: "no"
 archivematica_src_configure_ss: "no"
@@ -51,7 +56,6 @@ archivematica_src_am_db_host: "localhost"        # Archivematica database host
 archivematica_src_am_db_name: "MCP"              # Archivematica database name
 archivematica_src_am_db_user: "archivematica"    # Archivematica database user
 archivematica_src_am_db_password: "demo"         # Archivematica database password
-
 
 # Reset data options
 archivematica_src_reset_mcpdb: "false"           # Reset AM MCP database

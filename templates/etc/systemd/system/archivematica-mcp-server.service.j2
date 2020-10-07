@@ -6,8 +6,8 @@ After=syslog.target network.target mysql.service
 
 [Service]
 Type=simple
-User=archivematica
-Group=archivematica
+User={{ archivematica_src_am_system_user }}
+Group={{ archivematica_src_am_system_group }}
 EnvironmentFile=-{{ systemd_environment_path }}/archivematica-mcp-server
 {% if archivematica_src_syslog_enabled|bool %}
 StandardOutput=syslog

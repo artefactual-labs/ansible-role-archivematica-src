@@ -133,8 +133,8 @@
   file:
     dest: "{{ item }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_ss_system_user }}"
+    group: "{{ archivematica_src_ss_system_group }}"
   with_items:
     - "/var/archivematica/storage-service"
   tags: "amsrc-ss-osconf"
@@ -151,8 +151,8 @@
   file:
     dest: "{{ archivematica_src_ss_logdir }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_ss_system_user }}"
+    group: "{{ archivematica_src_ss_system_group }}"
     mode: "g+s"
   tags: "amsrc-ss-osconf"
   when: "archivematica_src_logging_backward_compatible|bool"
@@ -160,8 +160,8 @@
 - name: "Touch SS log files"
   file:
     path: "{{ archivematica_src_ss_logdir }}/{{ item }}"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_ss_system_user }}"
+    group: "{{ archivematica_src_ss_system_group }}"
     state: "touch"
   with_items:
     - "storage_service.log"

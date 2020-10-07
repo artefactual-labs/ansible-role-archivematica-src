@@ -38,8 +38,8 @@
 - name: "Fix DB permissions"
   file:
     dest: "{{ archivematica_src_ss_environment['SS_DB_NAME'] }}"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_ss_system_user }}"
+    group: "{{ archivematica_src_ss_system_group }}"
     mode: "u=rwX,g=rwX,o=rX"
   when: "archivematica_src_ss_environment['SS_DB_URL'] is not defined"
 

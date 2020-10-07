@@ -6,8 +6,8 @@ After=network.target
 
 [Service]
 PIDFile=/run/archivematica-storage-service_gunicorn.pid
-User=archivematica
-Group=archivematica
+User={{ archivematica_src_ss_system_user }}
+Group={{ archivematica_src_ss_system_group }}
 EnvironmentFile=-{{ systemd_environment_path }}/archivematica-storage-service
 {% if archivematica_src_syslog_enabled|bool %}
 StandardOutput=syslog

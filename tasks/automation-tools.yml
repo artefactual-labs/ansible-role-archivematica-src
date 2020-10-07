@@ -26,8 +26,8 @@
   file:
     dest: "{{ item }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
+    group: "{{ archivematica_src_am_system_user }}"
   with_items:
     - "/var/log/archivematica/automation-tools"
     - "/var/archivematica/automation-tools"

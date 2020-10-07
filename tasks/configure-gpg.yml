@@ -119,8 +119,8 @@
     - name: "Create directories for GPG locations"
       file:
         path: "{{ item }}"
-        owner: "archivematica"
-        group: "archivematica"
+        owner: "{{ archivematica_src_ss_system_user }}"
+        group: "{{ archivematica_src_ss_system_group }}"
         mode: "0755"
         state: "directory"
       become: "yes"

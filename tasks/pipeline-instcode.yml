@@ -44,8 +44,8 @@
   file:
     dest: "{{ archivematica_src_dir }}"
     state: "directory"
-    owner: "archivematica"
-    group: "archivematica"
+    owner: "{{ archivematica_src_am_system_user }}"
+    group: "{{ archivematica_src_am_system_group }}"
     recurse: "yes"
   with_items:
     - "{{ archivematica_src_dir }}/archivematica/src/dashboard/src/media"
@@ -53,7 +53,7 @@
 
 - name: "Install front-end dependencies"
   become: "yes"
-  become_user: "archivematica"
+  become_user: "{{ archivematica_src_am_system_user }}"
   command: npm install
   args:
     chdir: "{{ item }}"
