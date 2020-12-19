@@ -230,7 +230,13 @@ archivematica_src_syslog_mcpserver_level: "DEBUG"
 # Configure SS locations
 #
 #am_ss_default_locations:
-#  - { location_purpose: "RP", location_path: "/replicator", location_description: "Replicator location", location_default: "false" }
 #  - { location_purpose: "AS", location_path: "/aipstore", location_description: "AipStore", location_default: "true" }
+#  - { location_purpose: "RP", location_path: "/replicator", location_description: "Replicator location", location_default: "false", location_replicaof: "AipStore" }
 #  - { location_purpose: "TS", location_path: "/transfer-source/", location_description: "Transfer Source", location_default: "false" }
+#
+#am_ss_s3_spaces:
+#  - { access_protocol: "S3", path: "", staging_path: "/<staging>", endpoint_url: "https://<aws_url>", access_key_id: "<access_key_id>", secret_access_key: "<secret_access_key>", bucket: "<bucket>",region: "<region>" }
+#
+#am_ss_s3_locations:
+#  - { location_purpose: "AS", location_path: "<path>", staging_path: "<staging>", location_description: "S3 AipStore", bucket: "1234", location_default: "false" }
 

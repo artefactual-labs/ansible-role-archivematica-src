@@ -290,6 +290,17 @@
   when: "archivematica_src_configure_ss|bool or archivematica_src_configure_dashboard|bool"
 
 #
+# Configure SS locations
+#
+- include: "configure-locations.yml"
+  tags: 
+    - "amsrc-configure"
+    - "amsrc-configure-locations"
+    - "configure-locations"
+  when: am_ss_default_locations is defined or am_ss_s3_locations is defined
+
+
+#
 # Configure GPG locations
 #
 

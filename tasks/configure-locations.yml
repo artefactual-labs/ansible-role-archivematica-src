@@ -1,0 +1,145 @@
+- name: "Configure locations"
+  environment: "{{ archivematica_src_ss_environment }}"
+  block:
+    # Get id of the first registered pipeline (id=1)
+    - name: "Configure AM: get default pipeline UUID from SS database"
+      shell: >
+         echo "select uuid from locations_pipeline where id='1';"
+         | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      register: pipeline_uuid
+
+    # Gets the uuid of the first registered space (id=1)
+    - name: "Configure AM: get default Space UUID from SS database"
+      shell: >
+         echo  "select uuid from locations_space where id='1';"
+         | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      register: space_uuid
+
+    - name: "Configure AM: get all TS descriptions from SS database"
+      shell: >
+         echo "select description from locations_location;"
+         | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | grep -v "^description$"
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      register: location_descriptions
+
+    - name: "Configure SS: add custom locations"
+      uri:
+        url: "{{ archivematica_src_configure_ss_url }}/api/v2/location/"
+        headers:
+          Content-Type: "application/json"
+          Authorization: "ApiKey {{ archivematica_src_configure_ss_user }}:{{ archivematica_src_configure_ss_api_key }}"
+        body:
+          pipeline: ["/api/v2/pipeline/{{ pipeline_uuid.stdout }}/"]
+          purpose: "{{ item.location_purpose }}"
+          relative_path: "{{ item.location_path | regex_replace('^\\/', '') }}"
+          description: "{{ item.location_description }}"
+          space: "/api/v2/space/{{ space_uuid.stdout }}/"
+          default: "{{ item.location_default }}"
+        body_format: json
+        status_code: 201
+        method: POST
+      when: not location_descriptions.stdout | join('') | regex_search( '(^|\n)'+item.location_description+'(\n|$)' )
+      with_items: "{{ am_ss_default_locations }}"
+
+#
+#   S3 Space/locations configuration
+#
+
+    - name: "Configure AM: get S3 Space UUID from SS database"
+      shell: >
+         echo "select uuid from locations_space where access_protocol='S3';"
+         | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      register: s3_space_exists
+
+    - name: "Configure SS: add spaces"
+      uri:
+        url: "{{ archivematica_src_configure_ss_url }}/api/v2/space/"
+        headers:
+          Content-Type: "application/json"
+          Authorization: "ApiKey {{ archivematica_src_configure_ss_user }}:{{ archivematica_src_configure_ss_api_key }}"
+        body:
+          access_protocol: "{{ item.access_protocol }}"
+          path: "{{ item.path }}"
+          staging_path: "{{ item.staging_path }}"
+          endpoint_url: "{{ item.endpoint_url }}"
+          access_key_id: "{{ item.access_key_id }}"
+          secret_access_key: "{{ item.secret_access_key }}"
+          region: "{{ item.region }}"
+          bucket: "{{ item.bucket }}"
+        body_format: json
+        status_code: 201
+        method: POST
+      with_items: "{{ am_ss_s3_spaces }}"
+      when:
+        - s3_space_exists.stdout == ""
+        - am_ss_s3_spaces is defined
+
+    - name: "Configure AM: get existing S3 Space UUID from SS database"
+      shell: >
+         echo "select uuid from locations_space where access_protocol='S3';"
+         | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      register: s3_space_uuid
+
+    - name: "Configure SS: add S3 locations"
+      uri:
+        url: "{{ archivematica_src_configure_ss_url }}/api/v2/location/"
+        headers:
+          Content-Type: "application/json"
+          Authorization: "ApiKey {{ archivematica_src_configure_ss_user }}:{{ archivematica_src_configure_ss_api_key }}"
+        body:
+          pipeline: ["/api/v2/pipeline/{{ pipeline_uuid.stdout }}/"]
+          purpose: "{{ item.location_purpose }}"
+          relative_path: "{{ item.location_path | regex_replace('^\\/', '') }}"
+          staging_path: "{{ item.staging_path }}"
+          description: "{{ item.location_description }}"
+          space: "/api/v2/space/{{ s3_space_uuid.stdout }}/"
+          default: "{{ item.location_default }}"
+        body_format: json
+        status_code: 201
+        method: POST
+      with_items: "{{ am_ss_s3_locations | default([]) }}"
+      when:
+        - am_ss_s3_locations is defined and am_ss_s3_locations != ""
+        - not location_descriptions.stdout | join('') | regex_search( '(^|\n)'+item.location_description+'(\n|$)' )
+
+#
+#  Configure replication
+#
+
+    - name: "Configure replicas"
+      shell: |
+        if [ x"$PURPOSE" == x"RP" ]
+        then
+        echo $LOCATION replicates $REPLICAOF
+        LOCATION_ID=$(echo "select id from locations_location where description=\"$LOCATION\";" | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1 )
+        REPLICAOF_ID=$(echo "select id from locations_location where description=\"$REPLICAOF\";" | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1)
+        CONFIG_ID=$(echo "select id from locations_location_replicators where  from_location_id=$REPLICAOF_ID and to_location_id=$LOCATION_ID;" | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1)
+        if [ x$CONFIG_ID == x ]
+        then
+        echo "insert into locations_location_replicators (from_location_id, to_location_id) values($REPLICAOF_ID,$LOCATION_ID);" | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell 
+        fi
+        fi
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: "/bin/bash"
+      environment:
+        PURPOSE: "{{ item.location_purpose }}"
+        LOCATION: "{{ item.location_description }}"
+        REPLICAOF: "{{ item.location_replicaof|default('') }}"
+      with_items:
+        - "{{ am_ss_default_locations|default({}) }}"
+        - "{{ am_ss_s3_locations|default({}) }}"
