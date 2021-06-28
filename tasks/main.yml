@@ -293,3 +293,14 @@
   when:
     - "archivematica_src_install_ss|bool or archivematica_src_install_ss=='rpm'"
     - "archivematica_src_configure_gpg is defined"
+
+#
+# Configure Pipeline Local Filesystem Space
+#
+
+- include: "configure-pipeline-local-fs.yml"
+  tags:
+    - "amsrc-configure"
+  when: 
+    - "archivematica_src_configure_dashboard|bool"
+    - "archivematica_src_configure_pipeline_localfs_locations is defined"

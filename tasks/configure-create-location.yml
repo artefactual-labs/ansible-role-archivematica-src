@@ -1,0 +1,106 @@
+---
+
+# This file works as a function to create locations. The arguments are:
+# - am_configure_space_uuid
+# - am_configure_pipeline_uuid
+# - am_configure_location: One record dictionary with fields:
+#     - location_purpose
+#     - location_path (absolute path)
+#     - location_description
+#     - location_default
+#
+# For instance, you can call this task file from other task file with:
+#
+#- name: "Create Pipeline Local Filesystem locations"
+#  include_tasks: configure-create-location.yml
+#  vars:
+#    am_configure_space_uuid: "{{ am_configure_pipelinelocalfs_space_id.stdout }}"
+#    am_configure_pipeline_uuid: "{{ am_configure_pipelinelocalfs_pipeline_uuid.stdout }}"
+#  with_items: "{{ archivematica_src_configure_pipeline_localfs_locations }}"
+#  loop_control:
+#    loop_var: am_configure_location
+
+- name: "Check if '{{ am_configure_location.location_purpose }}' location with '{{ am_configure_location.location_path }}' path exists in '{{ am_configure_space_uuid }}' space"
+  shell: >
+    echo "select location_id from locations_locationpipeline where location_id in
+    (select uuid from locations_location where purpose='{{ am_configure_location.location_purpose }}'
+    and relative_path='{{ am_configure_location.location_path | regex_replace('^/', '') }}'
+    and space_id='{{ am_configure_space_uuid }}');"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_check_location_id
+
+
+- name: "Create '{{ am_configure_location.location_purpose }}' location with '{{ am_configure_location.location_path }}' path exists in '{{ am_configure_space_uuid }}' space"
+  uri:
+    url: "{{ archivematica_src_configure_ss_url }}/api/v2/location/"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "ApiKey {{ archivematica_src_configure_ss_user }}:{{ archivematica_src_configure_ss_api_key }}"
+    body:
+      pipeline: ["/api/v2/pipeline/{{ am_configure_pipeline_uuid }}/"]
+      purpose: "{{ am_configure_location.location_purpose }}"
+      relative_path: "{{ am_configure_location.location_path | regex_replace('^\\/', '') }}"
+      description: "{{ am_configure_location.location_description }}"
+      space: "/api/v2/space/{{ am_configure_space_uuid }}/"
+      default: "{{ am_configure_location.location_default }}"
+    body_format: json
+    status_code: 201
+    method: POST
+  when: am_configure_check_location_id.stdout == ""
+
+- name: "Get the location id to be replicated when location is a replicator"
+  shell: >
+    echo "select id from locations_location where description='{{ am_configure_location.location_replicaof }}';"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_replica_location_id
+  when: 
+    - am_configure_location.location_purpose == "RP" 
+    - am_configure_location.location_replicaof is defined
+
+- name: "Get the location id when location is a replicator"
+  shell: >
+    echo "select id from locations_location where description='{{ am_configure_location.location_description }}';"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_location_id
+  when: 
+    - am_configure_location.location_purpose == "RP" 
+    - am_configure_location.location_replicaof is defined
+
+- name: "Configure replication for location with description: '{{ am_configure_location.location_replicaof }}'"
+  shell: >
+    echo "insert into locations_location_replicators (from_location_id, to_location_id) values('{{ am_configure_replica_location_id.stdout }}','{{   }}'    ;"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_replica_location_id
+  when: 
+    - am_configure_location.location_purpose == "RP" 
+    - am_configure_location.location_replicaof is defined
+    - am_configure_replica_location_id.stdout != ""
+    - am_configure_location_id != ""

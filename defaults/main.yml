@@ -232,6 +232,31 @@ archivematica_src_syslog_mcpserver_level: "DEBUG"
 #     field_name: 'command_id'
 
 #
+# Configure locations
+#
+# For some different space protocols a dictionary will be used to configure locations.
+# The dictionary will have 4 keys:
+# 1) location_purpose: valid values are:
+#
+#    "AR": AIP RECOVERY
+#    "AS": AIP STORAGE
+#    "CP": CURRENTLY PROCESSING
+#    "DS": DIP STORAGE
+#    "SD": SWORD DEPOSIT
+#    "SS": STORAGE SERVICE INTERNAL PROCESSING
+#    "BL": TRANSFER BACKLOG
+#    "TS": TRANSFER SOURCE
+#    "RP": REPLICATOR
+#
+# 2) location_path: it assumes that the Space absolute path is "/" and removes the "/" when creating the location. So when using 
+#                   a different absolute path in Space, please write the relative path from Space path adding a "/" character to 
+#                   the beginning of the string.  
+#
+# 3) location_description: any location description
+#
+# 4) location_default: boolean
+
+#
 # Configure SS locations
 #
 #am_ss_default_locations:
@@ -239,3 +264,15 @@ archivematica_src_syslog_mcpserver_level: "DEBUG"
 #  - { location_purpose: "AS", location_path: "/aipstore", location_description: "AipStore", location_default: "true" }
 #  - { location_purpose: "TS", location_path: "/transfer-source/", location_description: "Transfer Source", location_default: "false" }
 
+#
+# Configure SS Pipeline Local FileSystem locations. The CP location is mandatory when pipeline is on a server different than the one the SS is on.
+# Pipeline Local Filesystems refer to the storage that is local to the Archivematica pipeline, 
+# but remote to the Storage Service. It's a ssh-based remote space.
+# More info: 
+# https://www.archivematica.org/en/docs/storage-service-0.16/administrators/#pipeline-local-filesystem
+#
+#archivematica_src_configure_pipeline_localfs_locations:
+#  - { location_purpose: "CP", location_path: "{{ archivematica_src_shareddir }}", location_description: "Pipeline Local Fylesistem CP", location_default: "false" }
+#  - { location_purpose: "BL", location_path: "{{ archivematica_src_shareddir }}/www/AIPsStore/transferBacklog", location_description: "Pipeline Local Fylesistem BL", location_default: "false" }
+#  - { location_purpose: "AS", location_path: "/aipstore", location_description: "AipStore", location_default: "true" }
+#  - { location_purpose: "TS", location_path: "/transfer-source/", location_description: "Transfer Source", location_default: "false" }

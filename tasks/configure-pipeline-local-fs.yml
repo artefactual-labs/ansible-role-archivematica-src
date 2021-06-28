@@ -1,0 +1,147 @@
+---
+# This tasks file configures the Pipeline Local Filesystem Spaces
+# Pipeline Local Filesystems refer to the storage that is local to the Archivematica pipeline, 
+# but remote to the Storage Service. It's a ssh-based remote space.
+# More info: 
+# https://www.archivematica.org/en/docs/storage-service-0.16/administrators/#pipeline-local-filesystem
+
+
+# Get pipeline uuid
+- name: Get pipeline uuid
+  become: "yes"
+  shell: >
+    echo "select value from DashboardSettings where name='dashboard_uuid';"
+    | PYTHONPATH={{ archivematica_src_am_common_app }}:{{ archivematica_src_am_dashboard_app }} {{ archivematica_src_am_dashboard_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_am_dashboard_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_am_dashboard_environment }}"
+  register: am_configure_pipelinelocalfs_pipeline_uuid
+
+# Define archivematica_src_configure_pipeline_remote_name
+- set_fact:
+    am_configure_pipelinelocalfs_pipeline_remote_name: "{{ ansible_host }}"
+
+# Redefine archivematica_src_configure_pipeline_remote_name when archivematica_src_configure_am_site_url is defined
+- set_fact:
+    am_configure_pipelinelocalfs_pipeline_remote_name: "{{ archivematica_src_configure_am_site_url|urlsplit('hostname') }}"
+  when: "archivematica_src_configure_am_site_url is defined"
+
+# Check when Pipeline Local Filesystem already exists
+- name: "Get Pipeline Local Filesystem Space ID when it is already configured"
+  become: "yes"
+  shell: > 
+    echo "select space_id from locations_pipelinelocalfs where remote_name='{{ am_configure_pipelinelocalfs_pipeline_remote_name }}';"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_pipelinelocalfs_space_id
+
+# Create Pipeline Local Filesystem Space when it doesn't exist
+
+- name: "Create Pipeline Local Filesystem Space"
+  uri:
+    url: "{{ archivematica_src_configure_ss_url }}/api/v2/space/"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "ApiKey {{ archivematica_src_configure_ss_user }}:{{ archivematica_src_configure_ss_api_key }}"
+    body:
+      access_protocol: "PIPE_FS"
+      path: "/"
+      staging_path: "/var/archivematica/storage_service"
+      remote_user: "archivematica"
+      remote_name: "{{ am_configure_pipelinelocalfs_pipeline_remote_name }}"
+      rsync_password: ""
+      assume_rsync_daemon: False      
+    body_format: json
+    status_code: 201
+    method: POST
+  when: 
+    - am_configure_pipelinelocalfs_space_id.stdout is defined
+    - am_configure_pipelinelocalfs_space_id.stdout == ""
+
+- name: "Get Pipeline Local Filesystem Space ID when it is created"
+  shell: >
+    echo "select space_id from locations_pipelinelocalfs where remote_name='{{ am_configure_pipelinelocalfs_pipeline_remote_name }}';"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_pipelinelocalfs_space_id_new
+  when:
+    - am_configure_pipelinelocalfs_space_id.stdout is defined
+    - am_configure_pipelinelocalfs_space_id.stdout == ""
+
+
+# Reassign pipelinelocalfs_space_id when the Space is created
+- set_fact: am_configure_pipelinelocalfs_space_id={{ am_configure_pipelinelocalfs_space_id_new }}
+  when: am_configure_pipelinelocalfs_space_id_new.stdout is defined
+
+
+- name: "Create Pipeline Local Filesystem locations"
+  include_tasks: configure-create-location.yml
+  vars:
+    am_configure_space_uuid: "{{ am_configure_pipelinelocalfs_space_id.stdout }}"
+    am_configure_pipeline_uuid: "{{ am_configure_pipelinelocalfs_pipeline_uuid.stdout }}"
+  with_items: "{{ archivematica_src_configure_pipeline_localfs_locations }}"
+  loop_control:
+    loop_var: am_configure_location
+
+# Transfer Backlog and Currently Processing locations must be exactly one per pipeline.
+# So it is necessary to remove the pipeline from default locations when these locations_locationpipelinenew locations are added
+- name: "Delete pipeline from default LocalFilesystem Currently Procession or Transfer Backlog location when added to Pipeline LocalFS"
+  shell: >
+    echo "delete from locations_locationpipeline where pipeline_id='{{ am_configure_pipelinelocalfs_pipeline_uuid.stdout }}' and location_id in
+    (select uuid from locations_location where purpose='{{ item }}' and space_id in
+    (select space_id from locations_localfilesystem where id='1'));"
+    | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell
+    | tail -n1
+  args:
+    chdir: "{{ archivematica_src_ss_app }}"
+    executable: /bin/bash
+  environment: "{{ archivematica_src_ss_environment }}"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  when: "item in (archivematica_src_configure_pipeline_localfs_locations | map(attribute='location_purpose') | list)"
+  loop:
+    - "BL"
+    - "CP"
+
+- name: "Create ssh key in SS"
+  user:
+    name: "archivematica"
+    generate_ssh_key: "yes"
+    ssh_key_file: ".ssh/id_rsa"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+  register: am_configure_pipelinelocalfs_ss_ssh_key
+
+- name: "Use StrictHostKeyChecking=no ssh option for archivematica user"
+  lineinfile:
+    create: "yes"
+    path: "/var/lib/archivematica/.ssh/config"
+    owner: "archivematica"
+    group: "archivematica"
+    mode: "0600"
+    line: "StrictHostKeyChecking no"
+  delegate_to: "{{ archivematica_src_configure_ss_inventory_hostname | default(archivematica_src_configure_ss_url|urlsplit('hostname')) }}"
+  remote_user: "{{ archivematica_src_configure_ss_ssh_user | default('artefactual') }}"
+
+- name: "Show ssh key"
+  debug: msg={{ am_configure_pipelinelocalfs_ss_ssh_key.ssh_public_key }}
+
+- name: "Add SS ssh key to pipeline server"
+  authorized_key:
+    user: "archivematica"
+    state: "present"
+    key: "{{ am_configure_pipelinelocalfs_ss_ssh_key.ssh_public_key }}"

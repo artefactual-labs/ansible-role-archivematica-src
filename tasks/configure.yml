@@ -236,20 +236,38 @@
     # Get id of the first registered pipeline (id=1)
     - name: "Configure AM: get default pipeline UUID from SS database"
       become: "yes"
-      command:  mysql {{ archivematica_src_ss_db_name }} -Ns -e "select uuid from locations_pipeline where id='1';"
+      shell: >
+        echo "select \`uuid\` from locations_pipeline where id='1';"
+        | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: /bin/bash
+      environment: "{{ archivematica_src_ss_environment }}"
       register: pipeline_uuid
       tags: "configure-am"
 
     # Gets the uuid of the first registered space (id=1)
     - name: "Configure AM: get default Space UUID from SS database"
       become: "yes"
-      command:  mysql {{ archivematica_src_ss_db_name }} -Ns -e "select uuid from locations_space where id='1';"
+      shell: >
+        echo "select \`uuid\` from locations_space where id='1';"
+        | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: /bin/bash
+      environment: "{{ archivematica_src_ss_environment }}"
       register: space_uuid
       tags: "configure-am"
 
     - name: "Configure AM: get all TS descriptions from SS database"
       become: "yes"
-      command:  mysql {{ archivematica_src_ss_db_name }} -Ns -e "select description from locations_location;"
+      shell: >
+        echo "select description from locations_location;"
+        | {{ archivematica_src_ss_virtualenv }}/bin/python manage.py dbshell | tail -n1
+      args:
+        chdir: "{{ archivematica_src_ss_app }}"
+        executable: /bin/bash
+      environment: "{{ archivematica_src_ss_environment }}"
       register: location_descriptions
       tags: "configure-am"
 
