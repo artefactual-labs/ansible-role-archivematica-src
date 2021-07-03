@@ -84,6 +84,15 @@
        archivematica_src_install_am|bool or
        archivematica_src_install_am=='rpm'"
  
+#
+# basic checks before upgrade
+#
+
+- include: upgrade-requirements.yml
+  tags: "check-upgrade-requirements"
+  when: 
+  - "check_for_upgrade_requirements|bool"
+  - "archivematica_src_configure_dashboard|bool"
 
 - name: "Checkout out archivematica-sampledata repository"
   git:

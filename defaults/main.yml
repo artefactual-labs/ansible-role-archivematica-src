@@ -186,6 +186,12 @@ archivematica_src_configure_am_whitelist: '""'               # Dashboard API whi
 
 
 #
+# upgrade requirements checks
+#
+check_for_upgrade_requirements: True
+force_completedTransfers_cleanup: False
+
+#
 #  Send logs to syslog
 #
 archivematica_src_syslog_enabled: "false"

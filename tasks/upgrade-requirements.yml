@@ -1,0 +1,25 @@
+---
+# The intention of this task is to check for some basic requirements for upgrading archivematica
+
+- name: "Checking completedTransfers folder for files..."
+  shell: ls {{ archivematica_src_shareddir }}/watchedDirectories/SIPCreation/completedTransfers | wc -l
+  register: completedTransfersFiles
+
+- name: "CompletedTransfers folder has {{ completedTransfersFiles.stdout }} files"
+  fail:
+    msg: 
+    - "Abort!! The {{ archivematica_src_shareddir }}watchedDirectories/SIPCreation/completedTransfers has 
+    {{ completedTransfersFiles.stdout }} files and could cause a large amount of emails after the upgrade."
+    - "Please remove these files before continue or set the variable force_completedTransfers_cleanup: True "
+  when: 
+  - completedTransfersFiles.stdout != "0" 
+  - not force_completedTransfers_cleanup|bool
+
+- name: Cleaning {{ archivematica_src_shareddir }} folder before upgrading
+#  file:
+#    state: absent
+#    path: "{{ archivematica_src_shareddir }}/watchedDirectories/SIPCreation/completedTransfers/"
+  shell: "rm -rf {{ archivematica_src_shareddir }}/watchedDirectories/SIPCreation/completedTransfers/*"
+  when: 
+  - completedTransfersFiles.stdout != "0" 
+  - force_completedTransfers_cleanup|bool
