@@ -236,3 +236,5 @@ archivematica_src_syslog_mcpserver_level: "DEBUG"
 #  - { location_purpose: "AS", location_path: "/aipstore", location_description: "AipStore", location_default: "true" }
 #  - { location_purpose: "TS", location_path: "/transfer-source/", location_description: "Transfer Source", location_default: "false" }
 
+# Default the nodejs_install_npm_user to `ansible_user_id`, until it can be fixed upstream
+nodejs_install_npm_user: "{{ ansible_user_id }}"
