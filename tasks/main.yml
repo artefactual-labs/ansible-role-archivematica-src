@@ -302,6 +302,15 @@
   tags:
     - "amsrc-fixity"
   when: "archivematica_src_install_fixity|bool"
+ 
+# Configure local CAS server
+#
+
+- include: "configure-cas.yml"
+  tags:
+    - "amsrc-configure-cas"
+  when:
+    - "archivematica_src_install_cas is defined"
 
 #
 # Configure pipeline and SS
@@ -311,6 +320,7 @@
   tags:
     - "amsrc-configure"
   when: "archivematica_src_configure_ss|bool or archivematica_src_configure_dashboard|bool"
+
 
 #
 # Configure GPG locations

@@ -1,0 +1,28 @@
+---
+
+# Install django cas auth server
+
+- name: "Clone CAS server code"
+  git: 
+    repo: "https://github.com/django-cas-ng/demo-cas-server"
+    dest: "{{ archivematica_src_dir }}/demo-cas-server"
+    version: "master"
+    accept_hostkey: "yes"
+
+- name: "Create virtualenv and install requirements"
+  pip:
+    requirements: "{{ archivematica_src_dir }}/demo-cas-server/requirements.txt"
+    virtualenv: "/usr/share/archivematica/virtualenvs/demo-cas-server"
+    virtualenv_python: python3.6
+
+- name: "Create systemd template"
+  template:
+    src: etc/systemd/system/demo-cas-server.service
+    dest: "/etc/systemd/system/demo-cas-server.service"
+
+- name: "Start/Restart CAS server"
+  service:
+    name: "demo-cas-server"
+    state: "restarted"
+    enabled: "yes"
+    daemon_reload: "yes"

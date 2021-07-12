@@ -1,0 +1,12 @@
+[Unit]
+Description=Django CAS test server
+
+[Service]
+Restart=on-failure
+User=archivematica
+Group=archivematica
+WorkingDirectory=/opt/archivematica/demo-cas-server/
+ExecStart=/usr/share/archivematica/virtualenvs/demo-cas-server/bin/python3 manage.py runserver 8100
+
+[Install]
+WantedBy=multi-user.target
